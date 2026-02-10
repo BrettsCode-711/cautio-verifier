@@ -122,6 +122,9 @@
     .kv-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: start; }
     .kv-key { color: var(--muted2); font-size: 12px; }
     .kv-val { color: rgba(255,255,255,0.88); font-size: 12px; min-width: 0; }
+    .kv-val-mono { font-family: 'Roboto Mono', monospace; font-size: 14px; }
+    .kv-row-tsa .kv-key { font-size: 14px; }
+    .footer-tsa { font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; padding: 4px 8px; }
     .code { font-size: 11px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,0.9); }
     .code .hash { font-family: 'Roboto Mono', monospace; }
     .code.mismatch { border-color: rgba(255, 77, 79, 0.4); background: rgba(255, 77, 79, 0.08); }
@@ -211,6 +214,14 @@
             <div class="kv-key">Hash Algorithm</div>
             <div id="algorithmLabel" class="kv-val">Keccak-256</div>
           </div>
+          <div class="kv-row kv-row-tsa">
+            <div class="kv-key">Timestamp Authority</div>
+            <div class="kv-val kv-val-mono">DigiCert SHA256 RFC3161 TSA</div>
+          </div>
+          <div class="kv-row kv-row-tsa">
+            <div class="kv-key">Verification Date</div>
+            <div id="verificationDateVal" class="kv-val kv-val-mono">—</div>
+          </div>
           <div class="kv-row">
             <div class="kv-key">Provided Root</div>
             <div class="kv-val"><div id="expectedRootCode" class="code" title=""></div></div>
@@ -251,6 +262,7 @@
       </div>
     </div>
     <div class="footer">© 2026 Cautio • Client-side • MIT licensed verifier • No data transmitted</div>
+    <div id="tsaFooterLabel" class="footer-tsa hidden">TSA Verified • DigiCert RFC3161</div>
   </div>
 
   <script>
@@ -278,6 +290,8 @@
   const expectedHashBlock = document.getElementById('expectedHashBlock');
   const computedHashBlock = document.getElementById('computedHashBlock');
   const conclusionText = document.getElementById('conclusionText');
+  const verificationDateVal = document.getElementById('verificationDateVal');
+  const tsaFooterLabel = document.getElementById('tsaFooterLabel');
 
   const PREVIEW_MAX_CHARS = 1000;
   const LARGE_FILE_BYTES = 1024 * 1024;
@@ -338,13 +352,32 @@
     statusText.textContent = message || '';
     statusPill.className = 'pill';
     appCard.classList.toggle('state-invalid', mode === 'invalid');
-    if (mode === 'valid') { statusPill.textContent = 'AUTHENTIC'; statusPill.classList.add('verified'); }
-    else if (mode === 'invalid') { statusPill.textContent = 'TAMPERING DETECTED'; statusPill.classList.add('tamper'); }
-    else { statusPill.textContent = 'VERIFYING'; }
+    if (mode === 'valid') { statusPill.textContent = 'AUTHENTIC'; statusPill.classList.add('verified'); tsaFooterLabel.classList.remove('hidden'); }
+    else if (mode === 'invalid') { statusPill.textContent = 'TAMPERING DETECTED'; statusPill.classList.add('tamper'); tsaFooterLabel.classList.add('hidden'); }
+    else { statusPill.textContent = 'VERIFYING'; tsaFooterLabel.classList.add('hidden'); }
   }
   function setErrorBanner(msg) {
     if (msg) { errorMsg.textContent = String(msg); errorBanner.classList.add('show'); }
     else { errorMsg.textContent = ''; errorBanner.classList.remove('show'); }
+  }
+  function formatVerificationDate(proof) {
+    var iso = (proof && (proof.timestamp || proof.tsa_timestamp)) || null;
+    if (iso) {
+      var d = new Date(iso);
+      if (!isNaN(d.getTime())) {
+        var y = d.getUTCFullYear();
+        var m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        var day = String(d.getUTCDate()).padStart(2, '0');
+        var h = String(d.getUTCHours()).padStart(2, '0');
+        var min = String(d.getUTCMinutes()).padStart(2, '0');
+        var s = String(d.getUTCSeconds()).padStart(2, '0');
+        return y + '-' + m + '-' + day + ' ' + h + ':' + min + ':' + s + ' UTC';
+      }
+    }
+    return new Date().toUTCString();
+  }
+  function setVerificationDate(proof) {
+    verificationDateVal.textContent = proof ? formatVerificationDate(proof) : new Date().toUTCString();
   }
   function updateCompare(expectedHex, computedHex, isMismatch) {
     if (!expectedHex || !computedHex || !isMismatch) {
@@ -478,6 +511,7 @@
     setErrorBanner(null);
     setCode(expectedRootCode, null);
     setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+    setVerificationDate(null);
     updateCompare(null, null, false);
     merkleViz.innerHTML = '';
     merkleViz.classList.remove('invalid', 'valid');
@@ -494,6 +528,7 @@
         var algo = (hashAlg && String(hashAlg).toLowerCase() === 'sha256') ? 'SHA-256' : 'Keccak-256';
         state.hashAlgorithm = algo;
         algorithmLabel.textContent = algo;
+        setVerificationDate(json);
 
         if (!proof || !Array.isArray(proof) || !root) {
           state.error = ERR_MISSING_FIELDS;
@@ -578,6 +613,7 @@
         state = { proof: null, valid: false, leafHash: null, root: null, computedRoot: null, steps: [], fileName: file.name, error: ERR_PARSE, largeFile: state.largeFile, parsedSuccessfully: false, hashAlgorithm: 'Keccak-256' };
         setStatus('invalid', 'Invalid file');
         setErrorBanner(state.error);
+        setVerificationDate(null);
         setCode(expectedRootCode, null);
         setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
         renderPreview(null);
@@ -591,6 +627,7 @@
       state = { proof: null, valid: false, leafHash: null, root: null, computedRoot: null, steps: [], fileName: file.name, error: ERR_READ, largeFile: state.largeFile, parsedSuccessfully: false, hashAlgorithm: 'Keccak-256' };
       setStatus('invalid', 'Invalid file');
       setErrorBanner(state.error);
+      setVerificationDate(null);
       setCode(expectedRootCode, null);
       setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
       renderPreview(null);
@@ -638,6 +675,8 @@
       merkleViz.innerHTML = '';
       merkleViz.classList.remove('invalid', 'valid');
       resultsCard.classList.remove('show', 'fade-out');
+      tsaFooterLabel.classList.add('hidden');
+      verificationDateVal.textContent = '—';
       input.value = '';
     }, 300);
   });
