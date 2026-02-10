@@ -1,409 +1,679 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cautio Verifier | Forensic Integrity</title>
-    <style>
-        :root {
-            /* Modern Palette */
-            --bg-grad-start: #f8fafc;
-            --bg-grad-end: #e2e8f0;
-            --card-bg: #ffffff;
-            
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --text-light: #94a3b8;
-            
-            --accent: #2563eb;
-            --border: #e2e8f0;
-            
-            --success-bg: #ecfdf5;
-            --success-text: #047857;
-            --success-border: #a7f3d0;
-            
-            --error-bg: #fef2f2;
-            --error-text: #b91c1c;
-            --error-border: #fecaca;
-            --error-code-bg: #fff1f2;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-main);
-        }
-
-        .container {
-            width: 100%;
-            max-width: 580px; /* Wider for better reading */
-            perspective: 1000px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 24px;
-            box-shadow: 
-                0 20px 25px -5px rgba(0, 0, 0, 0.1), 
-                0 8px 10px -6px rgba(0, 0, 0, 0.05);
-            padding: 40px;
-            text-align: center;
-            transition: transform 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Top Bar Decoration */
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, #3b82f6, #06b6d4);
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            margin: 0 0 8px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .subtitle {
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            margin-bottom: 32px;
-            font-weight: 500;
-        }
-
-        /* --- DROP ZONE --- */
-        .drop-zone {
-            border: 2px dashed #cbd5e1;
-            border-radius: 16px;
-            padding: 40px 20px;
-            background: #f8fafc;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--accent);
-            background: #eff6ff;
-            transform: scale(1.01);
-        }
-
-        .icon-folder {
-            font-size: 48px;
-            margin-bottom: 16px;
-            display: block;
-            opacity: 0.8;
-        }
-
-        .drop-text {
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 6px;
-        }
-        
-        .drop-sub {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        /* --- RESULTS --- */
-        #resultArea { display: none; text-align: left; animation: fadeIn 0.4s ease; }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            border-radius: 99px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 24px;
-            width: fit-content;
-        }
-
-        .status-success {
-            background: var(--success-bg);
-            color: var(--success-text);
-            border: 1px solid var(--success-border);
-        }
-
-        .status-error {
-            background: var(--error-bg);
-            color: var(--error-text);
-            border: 1px solid var(--error-border);
-        }
-
-        /* --- FORENSIC REPORT --- */
-        .forensic-box {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 6px -4px rgba(0,0,0,0.05);
-        }
-
-        .label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            font-weight: 700;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .hash-code {
-            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-            font-size: 0.8rem;
-            word-break: break-all;
-            padding: 12px;
-            border-radius: 8px;
-            line-height: 1.5;
-            margin-bottom: 20px;
-            background: #f8fafc;
-            color: var(--text-main);
-            border: 1px solid var(--border);
-        }
-
-        .hash-code.error {
-            background: var(--error-code-bg);
-            color: #7f1d1d;
-            border-color: var(--error-border);
-        }
-
-        .meta-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 0.9rem;
-        }
-        .meta-row:last-child { border-bottom: none; }
-        .meta-val { font-weight: 600; color: var(--text-main); }
-
-        .btn-reset {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 12px;
-            width: 100%;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        
-        .btn-reset:hover {
-            background: #f8fafc;
-            color: var(--text-main);
-            border-color: #cbd5e1;
-        }
-
-        footer {
-            margin-top: 32px;
-            font-size: 0.75rem;
-            color: var(--text-light);
-            text-align: center;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cautio Verifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg0: #0a0e17;
+      --bg1: #11151f;
+      --card: #161b22;
+      --border: #30363d;
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.62);
+      --muted2: rgba(255,255,255,0.48);
+      --cyan: #00d4ff;
+      --green: #00ff9d;
+      --red: #ff4d4f;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+      background: linear-gradient(135deg, var(--bg0) 0%, var(--bg1) 100%);
+    }
+    .page { width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .card {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px -10px rgba(0,0,0,0.6), 0 10px 30px -5px rgba(0,0,0,0.4);
+      padding: 24px;
+      transition: border-color 200ms ease, box-shadow 200ms ease;
+    }
+    .card.state-invalid {
+      border-color: rgba(255, 77, 79, 0.6);
+      box-shadow: 0 20px 40px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255, 77, 79, 0.25);
+    }
+    .header { margin-bottom: 20px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .lock { width: 24px; height: 24px; flex-shrink: 0; opacity: 0.9; }
+    .title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+    .subtitle { font-size: 14px; color: var(--muted); margin-top: 4px; }
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255,255,255,0.02);
+      transition: border-color 180ms ease, background 180ms ease;
+    }
+    .drop-zone:hover { border-color: var(--cyan); background: rgba(0, 212, 255, 0.05); }
+    .drop-zone.dragover { border-color: var(--cyan); background: rgba(0, 212, 255, 0.08); }
+    .drop-title { font-weight: 600; font-size: 14px; }
+    .drop-sub { margin-top: 8px; font-size: 12px; color: var(--muted2); }
+    .file-pill {
+      margin-top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 100%;
+    }
+    .file-pill code { font-family: var(--mono); font-size: 12px; color: rgba(255,255,255,0.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 360px; }
+    .hidden { display: none !important; }
+    .result { margin-top: 20px; opacity: 0; transform: translateY(8px); transition: opacity 400ms ease, transform 400ms ease; display: none; }
+    .result.show { display: block; opacity: 1; transform: translateY(0); }
+    .status-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 4px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      font-size: 12px;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+    }
+    .pill.verified { border-color: rgba(0, 255, 157, 0.4); color: var(--green); background: rgba(0, 255, 157, 0.08); animation: pulse-verified 1.5s ease-in-out infinite; }
+    .pill.tamper { border-color: rgba(255, 77, 79, 0.5); color: var(--red); background: rgba(255, 77, 79, 0.1); }
+    @keyframes pulse-verified { 0%, 100% { transform: scale(1.02); } 50% { transform: scale(1); } }
+    .status-msg { color: var(--muted); font-size: 12px; }
+    .error-banner {
+      margin-top: 14px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 77, 79, 0.35);
+      background: rgba(255, 77, 79, 0.08);
+      color: rgba(255,255,255,0.9);
+      font-size: 12px;
+      display: none;
+    }
+    .error-banner.show { display: block; }
+    .kv { margin-top: 18px; display: grid; gap: 10px; }
+    .kv-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: start; }
+    .kv-key { color: var(--muted2); font-size: 12px; }
+    .kv-val { color: rgba(255,255,255,0.88); font-size: 12px; min-width: 0; }
+    .code { font-family: var(--mono); font-size: 11px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,0.9); }
+    .code.mismatch { border-color: rgba(255, 77, 79, 0.4); background: rgba(255, 77, 79, 0.08); }
+    .section { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .section-title { font-size: 12px; color: var(--muted2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+    .warn { border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(0, 212, 255, 0.25); background: rgba(0, 212, 255, 0.05); color: rgba(255,255,255,0.85); font-size: 12px; display: none; margin-bottom: 10px; }
+    .warn.show { display: block; }
+    .preview { border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); padding: 12px; max-height: 220px; overflow: auto; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; color: rgba(255,255,255,0.86); }
+    .preview img { max-width: 100%; max-height: 200px; display: block; border-radius: 8px; }
+    .compare { margin-top: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); padding: 14px; display: none; }
+    .compare.show { display: block; }
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .panel { border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); overflow: hidden; }
+    .panel-title { font-size: 11px; color: rgba(255,255,255,0.7); padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .panel.computed .panel-title { background: rgba(255, 77, 79, 0.08); }
+    .hash-block { font-family: var(--mono); font-size: 11px; padding: 10px; line-height: 1.5; word-break: break-all; color: rgba(255,255,255,0.88); background: rgba(0,0,0,0.2); min-height: 60px; }
+    .hash-block.computed { background: rgba(255, 77, 79, 0.08); }
+    .diff { color: rgba(255,255,255,0.9); }
+    .diff.bad { color: var(--red); background: rgba(255, 77, 79, 0.2); border-radius: 2px; padding: 0 1px; }
+    .conclusion { margin-top: 12px; color: rgba(255,255,255,0.85); font-size: 12px; }
+    .conclusion strong { color: rgba(255,255,255,0.95); }
+    .merkle-viz { margin-top: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.15); padding: 12px; }
+    .merkle-viz.invalid { border-color: rgba(255, 77, 79, 0.35); background: rgba(255, 77, 79, 0.05); }
+    .merkle-viz.valid { border-color: rgba(0, 255, 157, 0.25); }
+    .merkle-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .merkle-node { font-family: var(--mono); font-size: 11px; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.75); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .merkle-node.valid { border-color: rgba(0, 255, 157, 0.35); color: var(--green); background: rgba(0, 255, 157, 0.06); }
+    .merkle-node.invalid { border-color: rgba(255, 77, 79, 0.45); color: var(--red); background: rgba(255, 77, 79, 0.08); }
+    .merkle-connector { font-size: 12px; color: var(--muted2); }
+    .actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 13px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.92);
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 160ms ease, background 160ms ease;
+    }
+    .btn:hover { border-color: var(--cyan); background: rgba(0, 212, 255, 0.06); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.7); }
+    .btn-secondary:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); }
+    .footer { font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; padding: 8px; }
+    @media (max-width: 520px) {
+      .compare-grid { grid-template-columns: 1fr; }
+      .kv-row { grid-template-columns: 1fr; }
+      .file-pill code { max-width: 240px; }
+    }
+  </style>
 </head>
 <body>
-
-    <div class="container">
-        <div class="card">
-            <h1>🔒 Cautio Verifier</h1>
-            <div class="subtitle">Cryptographic Trust Layer • Offline Verification</div>
-
-            <div id="dropZone" class="drop-zone">
-                <span class="icon-folder">📂</span>
-                <div class="drop-text">Drag & drop proof file here</div>
-                <div class="drop-sub">Accepts .proof.json • Fully local execution</div>
-            </div>
-
-            <div id="loading" style="display:none; padding: 40px;">
-                <div style="color:var(--text-muted); font-size: 0.9rem;">Verifying cryptographic signature...</div>
-            </div>
-
-            <div id="resultArea">
-                <div id="statusBadge" class="status-badge"></div>
-
-                <div id="forensicReport" style="display:none;">
-                    <div class="forensic-box">
-                        <div style="color: #b91c1c; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
-                            ⚠️ TAMPERING DETECTED
-                        </div>
-
-                        <span class="label">Expected Hash (Timestamp Signature)</span>
-                        <div class="hash-code" id="expectedHash"></div>
-
-                        <span class="label">Calculated Hash (Actual Content)</span>
-                        <div class="hash-code error" id="actualHash"></div>
-
-                        <div style="font-size:0.85rem; color:#7f1d1d; line-height:1.5;">
-                            <strong>Conclusion:</strong> The file content has been altered since the timestamp was created. 
-                            This document is <strong>not authentic</strong>.
-                        </div>
-                    </div>
-                </div>
-
-                <div id="validReport" class="forensic-box" style="display:none;">
-                    <div class="meta-row">
-                        <span style="color:var(--text-muted)">Asset Name</span>
-                        <span class="meta-val" id="assetName">contract.txt</span>
-                    </div>
-                    <div class="meta-row">
-                        <span style="color:var(--text-muted)">Algorithm</span>
-                        <span class="meta-val" id="algoName">SHA-256</span>
-                    </div>
-                    <div class="meta-row">
-                        <span style="color:var(--text-muted)">Root Hash</span>
-                        <span class="meta-val" style="font-family:monospace" id="rootHash">e4d9...</span>
-                    </div>
-                    <div style="margin-top:16px; font-size:0.85rem; color:#059669; text-align:center; background:#ecfdf5; padding:8px; border-radius:6px;">
-                        ✨ Timestamp Verified • No Tampering Detected
-                    </div>
-                </div>
-
-                <button class="btn-reset" onclick="resetUI()">Verify Another File</button>
-            </div>
-
-            <footer>
-                &copy; 2026 Cautio Inc. Client-side execution.<br>No data is ever uploaded to any server.
-            </footer>
+  <div class="page">
+    <div id="appCard" class="card">
+      <div class="header">
+        <div class="brand">
+          <svg class="lock" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7.5 10V7.75C7.5 5.12665 9.62665 3 12.25 3C14.8734 3 17 5.12665 17 7.75V10" stroke="rgba(255,255,255,0.75)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M6.5 10H17.5C18.6046 10 19.5 10.8954 19.5 12V19C19.5 20.1046 18.6046 21 17.5 21H6.5C5.39543 21 4.5 20.1046 4.5 19V12C4.5 10.8954 5.39543 10 6.5 10Z" stroke="rgba(255,255,255,0.75)" stroke-width="1.6" />
+            <path d="M12 14.25V16.75" stroke="rgba(255,255,255,0.75)" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="title">Cautio Verifier</div>
+            <div class="subtitle">Offline cryptographic integrity check • Client-side execution</div>
+          </div>
         </div>
+      </div>
+
+      <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop zone for proof.json">
+        <div id="dropZoneText" class="drop-title">Drop proof.json here or click to browse</div>
+        <div class="drop-sub">Fully offline — no data upload</div>
+        <div id="loadedFileName" class="file-pill hidden"><span>Loaded</span><code id="loadedFileCode"></code></div>
+      </div>
+
+      <div id="resultsCard" class="result">
+        <div class="status-row">
+          <div id="statusPill" class="pill">VERIFYING</div>
+          <div id="statusText" class="status-msg"></div>
+        </div>
+        <div id="errorBanner" class="error-banner"><div id="errorMsg"></div></div>
+        <div class="kv">
+          <div class="kv-row">
+            <div class="kv-key">Hash Algorithm</div>
+            <div id="algorithmLabel" class="kv-val">Keccak-256</div>
+          </div>
+          <div class="kv-row">
+            <div class="kv-key">Provided Root</div>
+            <div class="kv-val"><div id="expectedRootCode" class="code" title=""></div></div>
+          </div>
+          <div class="kv-row">
+            <div class="kv-key">Computed Root</div>
+            <div class="kv-val"><div id="computedRootCode" class="code" title=""></div></div>
+          </div>
+        </div>
+        <div id="compareSection" class="compare">
+          <div class="section-title">Forensic Comparison</div>
+          <div class="compare-grid">
+            <div class="panel expected">
+              <div class="panel-title">Expected Hash (from Timestamp)</div>
+              <div id="expectedHashBlock" class="hash-block"></div>
+            </div>
+            <div class="panel computed">
+              <div class="panel-title">Calculated Hash (from Content)</div>
+              <div id="computedHashBlock" class="hash-block computed"></div>
+            </div>
+          </div>
+          <div id="conclusionText" class="conclusion"></div>
+        </div>
+        <div class="section">
+          <div class="section-title">Decoded Content Preview</div>
+          <div id="largeFileWarning" class="warn">Large proof file — performance may vary.</div>
+          <div id="previewTruncatedBanner" class="warn">Large file — full content truncated for performance.</div>
+          <div id="preview" class="preview"></div>
+        </div>
+        <div class="section">
+          <div class="section-title">Merkle Path</div>
+          <div id="merkleViz" class="merkle-viz"></div>
+        </div>
+        <div class="actions">
+          <button id="downloadReport" class="btn">Export Verification Report</button>
+          <button id="resetBtn" class="btn btn-secondary" type="button">Verify Another File</button>
+        </div>
+      </div>
     </div>
+    <div class="footer">© 2026 Cautio • Client-side • MIT licensed verifier • No data transmitted</div>
+  </div>
 
-    <script>
-        const dropZone = document.getElementById('dropZone');
-        const loading = document.getElementById('loading');
-        const resultArea = document.getElementById('resultArea');
-        const statusBadge = document.getElementById('statusBadge');
-        const forensicReport = document.getElementById('forensicReport');
-        const validReport = document.getElementById('validReport');
+  <script>
+(function () {
+  const appCard = document.getElementById('appCard');
+  const dropZone = document.getElementById('dropZone');
+  const dropZoneText = document.getElementById('dropZoneText');
+  const loadedFileName = document.getElementById('loadedFileName');
+  const loadedFileCode = document.getElementById('loadedFileCode');
+  const resultsCard = document.getElementById('resultsCard');
+  const preview = document.getElementById('preview');
+  const statusText = document.getElementById('statusText');
+  const statusPill = document.getElementById('statusPill');
+  const expectedRootCode = document.getElementById('expectedRootCode');
+  const computedRootCode = document.getElementById('computedRootCode');
+  const merkleViz = document.getElementById('merkleViz');
+  const downloadReport = document.getElementById('downloadReport');
+  const resetBtn = document.getElementById('resetBtn');
+  const largeFileWarning = document.getElementById('largeFileWarning');
+  const previewTruncatedBanner = document.getElementById('previewTruncatedBanner');
+  const errorBanner = document.getElementById('errorBanner');
+  const errorMsg = document.getElementById('errorMsg');
+  const algorithmLabel = document.getElementById('algorithmLabel');
+  const compareSection = document.getElementById('compareSection');
+  const expectedHashBlock = document.getElementById('expectedHashBlock');
+  const computedHashBlock = document.getElementById('computedHashBlock');
+  const conclusionText = document.getElementById('conclusionText');
 
-        // Drag & Drop
-        ['dragenter', 'dragover'].forEach(e => {
-            dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.add('dragover'); });
-        });
-        ['dragleave', 'drop'].forEach(e => {
-            dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.remove('dragover'); });
-        });
+  const PREVIEW_MAX_CHARS = 1000;
+  const LARGE_FILE_BYTES = 1024 * 1024;
+  const LARGE_PREVIEW_BYTES = 10 * 1024 * 1024;
+  const ERR_ROOT_MISMATCH = 'INVALID – Calculated root does not match provided root (possible tampering or corruption).';
+  const ERR_MISSING_FIELDS = 'Invalid proof: Missing required fields (file_content, root, proof, or hash_algorithm).';
+  const ERR_PARSE = 'Invalid file format – not valid JSON.';
+  const ERR_READ = 'Invalid file format – could not read file.';
+  const ERR_MALFORMED_PROOF = 'Invalid proof data: Malformed hash or sibling format. Merkle path rejected.';
 
-        dropZone.addEventListener('drop', (e) => {
-            const file = e.dataTransfer.files[0];
-            if (file) processFile(file);
-        });
+  let state = { proof: null, valid: false, leafHash: null, root: null, computedRoot: null, steps: [], fileName: '', error: null, largeFile: false, parsedSuccessfully: false, hashAlgorithm: 'Keccak-256' };
 
-        dropZone.addEventListener('click', () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = (e) => processFile(e.target.files[0]);
-            input.click();
-        });
+  function normalizeHex(h) {
+    if (!h) return '';
+    return String(h).replace(/^0x/, '').trim().toLowerCase();
+  }
+  function truncateMiddle(h, head, tail) {
+    head = head || 10; tail = tail || 10;
+    const s = normalizeHex(h);
+    if (!s) return '—';
+    if (s.length <= head + tail + 3) return s;
+    return s.slice(0, head) + '…' + s.slice(-tail);
+  }
+  function setCode(el, hex, opts) {
+    opts = opts || {};
+    const s = normalizeHex(hex);
+    el.textContent = s ? truncateMiddle(s, 14, 14) : (opts.missingText || '—');
+    el.title = s || '';
+    el.classList.toggle('mismatch', !!opts.mismatch);
+  }
+  function renderDiff(expectedHex, computedHex) {
+    const a = normalizeHex(expectedHex);
+    const b = normalizeHex(computedHex);
+    const len = Math.max(a.length, b.length);
+    let outA = '', outB = '';
+    for (let i = 0; i < len; i++) {
+      const ca = a[i] || ' ';
+      const cb = b[i] || ' ';
+      const bad = ca !== cb;
+      outA += bad ? '<span class="diff bad">' + ca + '</span>' : '<span class="diff">' + ca + '</span>';
+      outB += bad ? '<span class="diff bad">' + cb + '</span>' : '<span class="diff">' + cb + '</span>';
+    }
+    return { outA: outA, outB: outB };
+  }
+  function setStatus(mode, message) {
+    statusText.textContent = message || '';
+    statusPill.className = 'pill';
+    appCard.classList.toggle('state-invalid', mode === 'invalid');
+    if (mode === 'valid') { statusPill.textContent = 'VERIFIED'; statusPill.classList.add('verified'); }
+    else if (mode === 'invalid') { statusPill.textContent = 'TAMPERING DETECTED'; statusPill.classList.add('tamper'); }
+    else { statusPill.textContent = 'VERIFYING'; }
+  }
+  function setErrorBanner(msg) {
+    if (msg) { errorMsg.textContent = String(msg); errorBanner.classList.add('show'); }
+    else { errorMsg.textContent = ''; errorBanner.classList.remove('show'); }
+  }
+  function updateCompare(expectedHex, computedHex, isMismatch) {
+    if (!expectedHex || !computedHex || !isMismatch) {
+      compareSection.classList.remove('show');
+      expectedHashBlock.innerHTML = '';
+      computedHashBlock.innerHTML = '';
+      conclusionText.textContent = '';
+      return;
+    }
+    const d = renderDiff(expectedHex, computedHex);
+    expectedHashBlock.innerHTML = d.outA;
+    computedHashBlock.innerHTML = d.outB;
+    compareSection.classList.add('show');
+    conclusionText.innerHTML = '<strong>Conclusion:</strong> File content altered since timestamp. Document is not authentic.';
+  }
 
-        function bufferToHex(buffer) {
-            return Array.from(new Uint8Array(buffer))
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
+  function keccak256(bytesOrHex) {
+    const hex = typeof bytesOrHex === 'string'
+      ? (bytesOrHex.startsWith('0x') ? bytesOrHex : '0x' + bytesOrHex)
+      : '0x' + Array.from(bytesOrHex).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    return ethers.keccak256(hex);
+  }
+  function verifyMerkleProof(leafHashHex, proof, rootHex) {
+    var current = leafHashHex.startsWith('0x') ? leafHashHex : '0x' + leafHashHex;
+    var root = rootHex.startsWith('0x') ? rootHex : '0x' + rootHex;
+    var steps = [{ label: 'Leaf', hash: current, valid: true }];
+    for (var i = 0; i < proof.length; i++) {
+      var sibling = proof[i].data.startsWith('0x') ? proof[i].data : '0x' + proof[i].data;
+      var left = proof[i].position === 'left' ? sibling : current;
+      var right = proof[i].position === 'right' ? sibling : current;
+      var combined = (left.startsWith('0x') ? left.slice(2) : left) + (right.startsWith('0x') ? right.slice(2) : right);
+      current = ethers.keccak256('0x' + combined);
+      steps.push({ label: 'Sibling ' + (i + 1), hash: sibling, valid: true });
+    }
+    steps.push({ label: 'Root', hash: current, valid: current.toLowerCase() === root.toLowerCase() });
+    return { valid: steps[steps.length - 1].valid, steps: steps, computedRoot: current };
+  }
+  function renderPreview(contentBase64) {
+    previewTruncatedBanner.classList.remove('show');
+    if (!contentBase64) { preview.textContent = '(no content)'; return; }
+    try {
+      var decodedLen = Math.floor((contentBase64.length * 3) / 4);
+      if (decodedLen > LARGE_PREVIEW_BYTES) { preview.textContent = 'Large file — no preview generated.'; return; }
+      var binary = atob(contentBase64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      var blob = new Blob([bytes]);
+      var first = bytes[0], second = bytes[1];
+      if (first === 0xFF && second === 0xD8) {
+        var url = URL.createObjectURL(blob);
+        var img = document.createElement('img');
+        img.src = url;
+        preview.innerHTML = '';
+        preview.appendChild(img);
+        return;
+      }
+      if (first === 0x89 && second === 0x50) {
+        url = URL.createObjectURL(blob);
+        img = document.createElement('img');
+        img.src = url;
+        preview.innerHTML = '';
+        preview.appendChild(img);
+        return;
+      }
+      var text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      var truncated = text.length > PREVIEW_MAX_CHARS;
+      preview.textContent = truncated ? text.slice(0, PREVIEW_MAX_CHARS) + '\n... [Full content available in original bundle]' : text;
+      if (truncated) previewTruncatedBanner.classList.add('show');
+    } catch (e) { preview.textContent = '(binary or invalid base64)'; }
+  }
+  function renderMerklePath(valid, steps, proof) {
+    merkleViz.innerHTML = '';
+    merkleViz.classList.toggle('invalid', !valid);
+    merkleViz.classList.toggle('valid', valid);
+    if (!steps || steps.length === 0) {
+      var row = document.createElement('div');
+      row.className = 'merkle-row';
+      row.innerHTML = '<span class="merkle-connector">No path data</span>';
+      merkleViz.appendChild(row);
+      return;
+    }
+    var leafStep = steps[0], rootStep = steps[steps.length - 1];
+    var row1 = document.createElement('div');
+    row1.className = 'merkle-row';
+    var leafNode = document.createElement('div');
+    leafNode.className = 'merkle-node leaf ' + (valid ? 'valid' : 'invalid');
+    leafNode.title = leafStep.hash;
+    leafNode.textContent = leafStep.hash.slice(0, 10) + '…' + leafStep.hash.slice(-6);
+    row1.appendChild(leafNode);
+    merkleViz.appendChild(row1);
+    if (proof && proof.length > 0) {
+      var row2 = document.createElement('div');
+      row2.className = 'merkle-row';
+      row2.innerHTML = '<span class="merkle-connector">↑ siblings</span>';
+      merkleViz.appendChild(row2);
+      var row3 = document.createElement('div');
+      row3.className = 'merkle-row';
+      proof.forEach(function(p, idx) {
+        var n = document.createElement('div');
+        n.className = 'merkle-node ' + (valid ? 'valid' : 'invalid');
+        var h = p.data.startsWith('0x') ? p.data : '0x' + p.data;
+        n.title = h;
+        n.textContent = h.slice(0, 10) + '…' + h.slice(-6);
+        row3.appendChild(n);
+      });
+      merkleViz.appendChild(row3);
+      var row4 = document.createElement('div');
+      row4.className = 'merkle-row';
+      row4.innerHTML = '<span class="merkle-connector">↑ root</span>';
+      merkleViz.appendChild(row4);
+    }
+    var rowRoot = document.createElement('div');
+    rowRoot.className = 'merkle-row';
+    var rootNode = document.createElement('div');
+    rootNode.className = 'merkle-node root ' + (valid ? 'valid' : 'invalid');
+    rootNode.title = rootStep.hash;
+    rootNode.textContent = rootStep.hash.slice(0, 10) + '…' + rootStep.hash.slice(-6);
+    rowRoot.appendChild(rootNode);
+    merkleViz.appendChild(rowRoot);
+  }
+
+  function processFile(file) {
+    state = { proof: null, valid: false, leafHash: null, root: null, computedRoot: null, steps: [], fileName: file.name, error: null, largeFile: file.size > LARGE_FILE_BYTES, parsedSuccessfully: false, hashAlgorithm: 'Keccak-256' };
+    dropZoneText.textContent = 'Drop proof.json here or click to browse';
+    loadedFileCode.textContent = file.name;
+    loadedFileName.classList.remove('hidden');
+    largeFileWarning.classList.toggle('show', state.largeFile);
+    previewTruncatedBanner.classList.remove('show');
+    resultsCard.classList.add('show');
+    setStatus('verifying', 'Running local verification…');
+    setErrorBanner(null);
+    setCode(expectedRootCode, null);
+    setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+    updateCompare(null, null, false);
+    merkleViz.innerHTML = '';
+    merkleViz.classList.remove('invalid', 'valid');
+    preview.textContent = '';
+
+    var fr = new FileReader();
+    fr.onload = function() {
+      try {
+        var json = JSON.parse(fr.result);
+        var fileContentB64 = json.file_content;
+        var proof = json.proof;
+        var root = json.root;
+        var hashAlg = json.hash_algorithm;
+        var algo = (hashAlg && String(hashAlg).toLowerCase() === 'sha256') ? 'SHA-256' : 'Keccak-256';
+        state.hashAlgorithm = algo;
+        algorithmLabel.textContent = algo;
+
+        if (!proof || !Array.isArray(proof) || !root) {
+          state.error = ERR_MISSING_FIELDS;
+          state.valid = false;
+          state.parsedSuccessfully = true;
+          state.root = (root != null && root !== '') ? ('0x' + String(root).replace(/^0x/, '')) : null;
+          setStatus('invalid', 'Proof rejected');
+          setErrorBanner(state.error);
+          setCode(expectedRootCode, state.root);
+          setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+          renderPreview(null);
+          merkleViz.classList.add('invalid');
+          merkleViz.classList.remove('valid');
+          renderMerklePath(false, [], null);
+          downloadReport.disabled = false;
+          return;
         }
 
-        function base64ToArrayBuffer(base64) {
-            const binary_string = window.atob(base64);
-            const len = binary_string.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binary_string.charCodeAt(i);
-            }
-            return bytes.buffer;
+        var rawBytes = fileContentB64 ? Uint8Array.from(atob(fileContentB64), function(c) { return c.charCodeAt(0); }) : new Uint8Array(0);
+        var leafHash = null;
+        try { leafHash = rawBytes.length > 0 ? keccak256(rawBytes) : null; } catch (cryptoErr) {
+          console.error('Cautio verifier (keccak256):', cryptoErr);
+          state.error = ERR_MALFORMED_PROOF;
+          state.valid = false;
+          state.parsedSuccessfully = true;
+          state.root = (root != null && root !== '') ? ('0x' + String(root).replace(/^0x/, '')) : null;
+          setStatus('invalid', 'Proof rejected');
+          setErrorBanner(state.error);
+          setCode(expectedRootCode, state.root);
+          setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+          renderPreview(fileContentB64);
+          merkleViz.classList.add('invalid');
+          merkleViz.classList.remove('valid');
+          renderMerklePath(false, [], proof);
+          downloadReport.disabled = false;
+          return;
         }
-
-        async function processFile(file) {
-            dropZone.style.display = 'none';
-            resultArea.style.display = 'none';
-            loading.style.display = 'block';
-
-            await new Promise(r => setTimeout(r, 600));
-
-            try {
-                const text = await file.text();
-                let proof;
-                try { proof = JSON.parse(text); } 
-                catch (e) { throw new Error("File is not valid JSON."); }
-
-                if (!proof.root || !proof.file_content) {
-                    throw new Error("Invalid Proof: Missing root or content.");
-                }
-
-                // CRYPTO CHECK
-                const dataBuffer = base64ToArrayBuffer(proof.file_content);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-                const calculatedHash = bufferToHex(hashBuffer);
-
-                if (calculatedHash !== proof.root) {
-                    showError(proof.root, calculatedHash);
-                } else {
-                    showSuccess(proof);
-                }
-
-            } catch (err) {
-                alert("Error: " + err.message);
-                resetUI();
-            }
+        if (!leafHash && proof.length > 0) {
+          state = { proof: json, valid: false, error: ERR_MISSING_FIELDS, root: root.startsWith('0x') ? root : '0x' + root, computedRoot: null, steps: [], fileName: file.name, largeFile: state.largeFile, parsedSuccessfully: true, hashAlgorithm: state.hashAlgorithm };
+          setStatus('invalid', 'Proof rejected');
+          setErrorBanner(state.error);
+          setCode(expectedRootCode, state.root);
+          setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+          renderPreview(fileContentB64);
+          merkleViz.classList.add('invalid');
+          merkleViz.classList.remove('valid');
+          renderMerklePath(false, [], proof);
+          downloadReport.disabled = false;
+          return;
         }
-
-        function showSuccess(proof) {
-            loading.style.display = 'none';
-            resultArea.style.display = 'block';
-            validReport.style.display = 'block';
-            forensicReport.style.display = 'none';
-
-            statusBadge.className = "status-badge status-success";
-            statusBadge.innerHTML = "✅ &nbsp; VALID INTEGRITY PROOF";
-
-            document.getElementById('assetName').textContent = proof.filename || "Unknown Asset";
-            document.getElementById('algoName').textContent = (proof.algorithm || "SHA-256").toUpperCase();
-            document.getElementById('rootHash').textContent = proof.root.substring(0, 20) + "...";
+        var rootHex = root.startsWith('0x') ? root : '0x' + root;
+        var result;
+        try { result = verifyMerkleProof(leafHash, proof, rootHex); } catch (verifyErr) {
+          console.error('Cautio verifier (verifyMerkleProof):', verifyErr);
+          state = { proof: json, valid: false, error: ERR_MALFORMED_PROOF, root: rootHex, computedRoot: null, steps: [], fileName: file.name, largeFile: state.largeFile, parsedSuccessfully: true, hashAlgorithm: state.hashAlgorithm };
+          setStatus('invalid', 'Proof rejected');
+          setErrorBanner(state.error);
+          setCode(expectedRootCode, state.root);
+          setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+          renderPreview(fileContentB64);
+          merkleViz.classList.add('invalid');
+          merkleViz.classList.remove('valid');
+          renderMerklePath(false, [], proof);
+          downloadReport.disabled = false;
+          return;
         }
+        var valid = result.valid;
+        state = { proof: json, valid: valid, leafHash: leafHash, root: rootHex, computedRoot: result.computedRoot, steps: result.steps, fileName: file.name, error: valid ? null : ERR_ROOT_MISMATCH, largeFile: state.largeFile, parsedSuccessfully: true, hashAlgorithm: state.hashAlgorithm };
+        if (valid) { setStatus('valid', 'Integrity verified'); setErrorBanner(null); }
+        else { setStatus('invalid', 'Root mismatch'); setErrorBanner(state.error); }
+        setCode(expectedRootCode, state.root);
+        setCode(computedRootCode, state.computedRoot, { mismatch: !valid });
+        var expHex = normalizeHex(state.root);
+        var compHex = normalizeHex(state.computedRoot);
+        updateCompare(state.root, state.computedRoot, !valid && expHex && compHex && expHex !== compHex);
+        renderPreview(fileContentB64);
+        merkleViz.classList.toggle('valid', valid);
+        merkleViz.classList.toggle('invalid', !valid);
+        renderMerklePath(valid, result.steps, proof);
+        downloadReport.disabled = false;
+      } catch (e) {
+        state = { proof: null, valid: false, leafHash: null, root: null, computedRoot: null, steps: [], fileName: file.name, error: ERR_PARSE, largeFile: state.largeFile, parsedSuccessfully: false, hashAlgorithm: 'Keccak-256' };
+        setStatus('invalid', 'Invalid file');
+        setErrorBanner(state.error);
+        setCode(expectedRootCode, null);
+        setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+        renderPreview(null);
+        merkleViz.innerHTML = '';
+        merkleViz.classList.add('invalid');
+        updateCompare(null, null, false);
+        downloadReport.disabled = false;
+      }
+    };
+    fr.onerror = function() {
+      state = { proof: null, valid: false, leafHash: null, root: null, computedRoot: null, steps: [], fileName: file.name, error: ERR_READ, largeFile: state.largeFile, parsedSuccessfully: false, hashAlgorithm: 'Keccak-256' };
+      setStatus('invalid', 'Invalid file');
+      setErrorBanner(state.error);
+      setCode(expectedRootCode, null);
+      setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+      renderPreview(null);
+      merkleViz.innerHTML = '';
+      merkleViz.classList.add('invalid');
+      updateCompare(null, null, false);
+      downloadReport.disabled = false;
+    };
+    fr.readAsText(file);
+  }
 
-        function showError(expected, actual) {
-            loading.style.display = 'none';
-            resultArea.style.display = 'block';
-            validReport.style.display = 'none';
-            forensicReport.style.display = 'block';
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.className = 'hidden';
+  input.addEventListener('change', function() { var f = input.files && input.files[0]; if (f) processFile(f); });
+  document.body.appendChild(input);
+  dropZone.addEventListener('click', function() { input.click(); });
+  dropZone.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+  dropZone.addEventListener('dragenter', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', function(e) { e.preventDefault(); dropZone.classList.remove('dragover'); });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) processFile(f);
+  });
 
-            statusBadge.className = "status-badge status-error";
-            statusBadge.innerHTML = "❌ &nbsp; VERIFICATION FAILED";
+  resetBtn.addEventListener('click', function() {
+    state = { proof: null, valid: false, leafHash: null, root: null, computedRoot: null, steps: [], fileName: '', error: null, largeFile: false, parsedSuccessfully: false, hashAlgorithm: 'Keccak-256' };
+    appCard.classList.remove('state-invalid');
+    dropZoneText.textContent = 'Drop proof.json here or click to browse';
+    loadedFileCode.textContent = '';
+    loadedFileName.classList.add('hidden');
+    setErrorBanner(null);
+    setCode(expectedRootCode, null);
+    setCode(computedRootCode, null, { missingText: '— (failed to compute)' });
+    updateCompare(null, null, false);
+    largeFileWarning.classList.remove('show');
+    previewTruncatedBanner.classList.remove('show');
+    preview.textContent = '';
+    merkleViz.innerHTML = '';
+    merkleViz.classList.remove('invalid', 'valid');
+    resultsCard.classList.remove('show');
+    input.value = '';
+  });
 
-            document.getElementById('expectedHash').textContent = expected;
-            document.getElementById('actualHash').textContent = actual;
-        }
-
-        function resetUI() {
-            resultArea.style.display = 'none';
-            dropZone.style.display = 'block';
-            dropZone.classList.remove('dragover');
-        }
-    </script>
+  downloadReport.addEventListener('click', function() {
+    try {
+      var JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+      if (!JsPDF) { alert('jsPDF not loaded.'); return; }
+      var doc = new JsPDF();
+      var w = doc.internal.pageSize.getWidth();
+      var ts = new Date().toISOString();
+      var isValid = state.valid === true;
+      doc.setFillColor(22, 27, 34);
+      doc.rect(0, 0, w, doc.internal.pageSize.getHeight(), 'F');
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(22);
+      if (isValid) { doc.setTextColor(0, 255, 157); doc.text('Cautio Verification Certificate', 20, 24); }
+      else { doc.setTextColor(255, 77, 79); doc.text('Cautio FAILURE REPORT', 20, 24); }
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(230, 237, 243);
+      var y = 34;
+      doc.text('Generated: ' + ts, 20, y); y += 7;
+      doc.text('Dropped File: ' + (state.fileName || 'proof.json'), 20, y); y += 7;
+      doc.text('Hash Algorithm: ' + (state.hashAlgorithm || 'Keccak-256'), 20, y); y += 10;
+      doc.setFontSize(24);
+      doc.setFont('courier', 'bold');
+      if (isValid) { doc.setTextColor(0, 255, 157); doc.text('Status: VALID', w / 2, y + 6, { align: 'center' }); }
+      else { doc.setTextColor(255, 77, 79); doc.text('Status: INVALID', w / 2, y + 6, { align: 'center' }); }
+      doc.setFont('courier', 'normal');
+      y += 18;
+      doc.setFontSize(10);
+      doc.setTextColor(230, 237, 243);
+      var providedRoot = (state.root || (state.proof && state.proof.root) || '').replace(/^0x/, '') || '—';
+      doc.text('Provided Root Hash: ' + providedRoot, 20, y); y += 6;
+      var computedRootText = state.computedRoot ? (state.computedRoot + '').replace(/^0x/, '') : '— (failed to compute)';
+      doc.text('Computed Root Hash: ' + computedRootText, 20, y); y += 8;
+      if (state.error) {
+        doc.setFontSize(9);
+        doc.setTextColor(255, 150, 150);
+        var lines = doc.splitTextToSize('Error/Message: ' + String(state.error), w - 40);
+        doc.text(lines, 20, y);
+        y += lines.length * 5 + 6;
+        doc.setTextColor(230, 237, 243);
+        doc.setFontSize(10);
+      }
+      y = doc.internal.pageSize.getHeight() - 18;
+      doc.setFontSize(8);
+      doc.setTextColor(139, 148, 158);
+      doc.text('Verified offline — no data transmitted. Integrity since notarization only.', w / 2, y, { align: 'center' });
+      doc.save(isValid ? 'cautio-verification-certificate.pdf' : 'cautio-failure-report.pdf');
+    } catch (err) {
+      alert('Failed to generate PDF: ' + (err && (err.message || err.toString()) || 'Unknown error'));
+    }
+  });
+})();
+  </script>
 </body>
 </html>
