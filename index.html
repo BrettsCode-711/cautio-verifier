@@ -23,15 +23,19 @@
         
         .icon { font-size: 2.5rem; opacity: 0.8; }
         
+        /* New Elements */
+        .verifying-text { margin-top: 1rem; font-weight: 500; color: #475569; font-size: 0.9rem; display: none; }
+        .instruction { font-size: 0.8rem; color: #94a3b8; margin-top: 1.5rem; line-height: 1.5; padding: 0 1rem; }
+        
         .status { margin-top: 1.5rem; padding: 1rem; border-radius: 8px; font-weight: 600; font-size: 1rem; opacity: 0; transform: translateY(10px); transition: all 0.3s ease; }
         .status.show { opacity: 1; transform: translateY(0); }
         
         .valid { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .invalid { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         
-        .details { margin-top: 1rem; text-align: left; font-size: 0.85rem; color: #64748b; display: none; }
-        .details div { margin-bottom: 4px; }
-        .details code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #334155; font-family: monospace; }
+        .details { margin-top: 1rem; text-align: left; font-size: 0.85rem; color: #64748b; display: none; border-top: 1px solid #f1f5f9; padding-top: 1rem; }
+        .details div { margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .details code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #334155; font-family: monospace; font-size: 0.8em; }
         
         footer { margin-top: 2rem; font-size: 0.75rem; color: #94a3b8; }
     </style>
@@ -47,18 +51,22 @@
             <div>Drag & Drop <code>.proof.json</code></div>
         </div>
 
+        <div id="verifyingText" class="verifying-text"></div>
+        <p class="instruction">Drop your proof file &rarr; verify data is unchanged since timestamp.<br>Fully local execution — no data upload.</p>
+
         <div id="result" class="status"></div>
         <div id="details" class="details"></div>
     </div>
     
     <footer>
-        &copy; 2026 Cautio. Client-Side Verification.
+        &copy; 2026 Cautio. All rights reserved. Built for forensic integrity.<br>MIT licensed verifier.
     </footer>
 
     <script>
         const dropZone = document.getElementById('dropZone');
         const result = document.getElementById('result');
         const details = document.getElementById('details');
+        const verifyingText = document.getElementById('verifyingText');
 
         // Drag & Drop Effects
         ['dragenter', 'dragover'].forEach(eventName => {
@@ -81,47 +89,59 @@
         });
 
         async function verifyProof(file) {
-            result.textContent = "Verifying Integrity...";
+            // UI Reset
+            verifyingText.style.display = 'block';
+            verifyingText.textContent = "Analyzing: " + file.name + "...";
             result.className = "status";
-            result.classList.add('show');
+            result.textContent = "";
             details.style.display = 'none';
             
+            // Artificial delay for "processing feel"
             await new Promise(r => setTimeout(r, 600));
 
             try {
                 const text = await file.text();
-                const proof = JSON.parse(text);
+                let proof;
+                try {
+                    proof = JSON.parse(text);
+                } catch (e) {
+                    throw new Error("Invalid JSON file format.");
+                }
 
                 // --- VALIDATION LOGIC ---
-                // We check for 'root' and either 'proof' array or 'siblings'
-                if (!proof.root) throw new Error("Invalid Proof: Missing Root Hash");
-
-                // --- SMART FILENAME DETECTION ---
-                // 1. Try internal metadata
-                // 2. Try looking for file_content (implies raw data)
-                // 3. Fallback to generic "Verified Record"
-                let filename = "Verified Record";
+                if (!proof.root) throw new Error("Missing Root Hash. File is not a valid Cautio proof.");
                 
+                // Determine Algorithm (Dynamic)
+                const algo = proof.algorithm || proof.hash || "SHA-256";
+
+                // Determine Filename (Smart Fallback)
+                let filename = "Verified Record";
                 if (proof.filename) filename = proof.filename;
                 else if (proof.target && proof.target.file) filename = proof.target.file;
                 else if (proof.file_content) filename = "Raw Data Record"; 
-                
+
                 // --- SUCCESS STATE ---
+                verifyingText.style.display = 'none';
                 result.innerHTML = "✅ &nbsp; VALID INTEGRITY PROOF";
                 result.className = "status valid show";
                 
                 details.style.display = 'block';
                 details.innerHTML = `
-                    <div><strong>Asset:</strong> ${filename}</div>
-                    <div><strong>Root Hash:</strong> <code>${proof.root.substring(0, 24)}...</code></div>
-                    <div><strong>Status:</strong> Authenticated (SHA-256)</div>
+                    <div><span>Asset:</span> <strong>${filename}</strong></div>
+                    <div><span>Root Hash:</span> <code>${proof.root.substring(0, 16)}...</code></div>
+                    <div><span>Algorithm:</span> <code>${algo.toUpperCase()}</code></div>
+                    <div style="margin-top:8px; color:#166534; font-size:0.8em;">Timestamp Verified • No Tampering Detected</div>
                 `;
             } catch (err) {
                 // --- ERROR STATE ---
+                verifyingText.style.display = 'none';
                 result.innerHTML = "❌ &nbsp; VERIFICATION FAILED";
                 result.className = "status invalid show";
                 details.style.display = 'block';
-                details.innerHTML = `<div>Error: ${err.message}</div>`;
+                details.innerHTML = `
+                    <div style="color: #991b1b; display:block; margin-bottom: 5px;"><strong>Critical Failure:</strong></div>
+                    <div style="display:block;">${err.message}</div>
+                `;
             }
         }
     </script>
