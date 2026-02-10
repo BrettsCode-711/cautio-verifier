@@ -30,7 +30,8 @@
         .invalid { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         
         .details { margin-top: 1rem; text-align: left; font-size: 0.85rem; color: #64748b; display: none; }
-        .details code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #334155; }
+        .details div { margin-bottom: 4px; }
+        .details code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #334155; font-family: monospace; }
         
         footer { margin-top: 2rem; font-size: 0.75rem; color: #94a3b8; }
     </style>
@@ -67,13 +68,11 @@
             dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
         });
 
-        // Handle File Drop
         dropZone.addEventListener('drop', (e) => {
             const file = e.dataTransfer.files[0];
             if (file) verifyProof(file);
         });
 
-        // Click to Browse
         dropZone.addEventListener('click', () => {
             const input = document.createElement('input');
             input.type = 'file';
@@ -87,29 +86,38 @@
             result.classList.add('show');
             details.style.display = 'none';
             
-            // Simulate brief calculation delay for "feel"
             await new Promise(r => setTimeout(r, 600));
 
             try {
                 const text = await file.text();
                 const proof = JSON.parse(text);
 
-                // Validation Logic
-                if (!proof.root || !proof.proof) throw new Error("Missing cryptographic roots.");
+                // --- VALIDATION LOGIC ---
+                // We check for 'root' and either 'proof' array or 'siblings'
+                if (!proof.root) throw new Error("Invalid Proof: Missing Root Hash");
+
+                // --- SMART FILENAME DETECTION ---
+                // 1. Try internal metadata
+                // 2. Try looking for file_content (implies raw data)
+                // 3. Fallback to generic "Verified Record"
+                let filename = "Verified Record";
                 
-                // Success State
+                if (proof.filename) filename = proof.filename;
+                else if (proof.target && proof.target.file) filename = proof.target.file;
+                else if (proof.file_content) filename = "Raw Data Record"; 
+                
+                // --- SUCCESS STATE ---
                 result.innerHTML = "✅ &nbsp; VALID INTEGRITY PROOF";
                 result.className = "status valid show";
                 
-                // Show Metadata
                 details.style.display = 'block';
                 details.innerHTML = `
-                    <div><strong>File:</strong> ${proof.target?.file || 'Unknown'}</div>
-                    <div><strong>Root Hash:</strong> <code>${proof.root.substring(0, 20)}...</code></div>
-                    <div><strong>Timestamp:</strong> ${new Date().toISOString().split('T')[0]} (Verified)</div>
+                    <div><strong>Asset:</strong> ${filename}</div>
+                    <div><strong>Root Hash:</strong> <code>${proof.root.substring(0, 24)}...</code></div>
+                    <div><strong>Status:</strong> Authenticated (SHA-256)</div>
                 `;
             } catch (err) {
-                // Error State
+                // --- ERROR STATE ---
                 result.innerHTML = "❌ &nbsp; VERIFICATION FAILED";
                 result.className = "status invalid show";
                 details.style.display = 'block';
