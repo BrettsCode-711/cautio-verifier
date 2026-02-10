@@ -1,0 +1,8 @@
+{
+  "filename": "finance_log.txt",
+  "root": "1111111111111111111111111111111111111111111111111111111111111111",
+  "proof": [],
+  "file_content": "RmluYW5jaWFsIFRyYW5zYWN0aW9uIExvZzogMjAyNi1RMSAtIENMRUFSRUQK",
+  "timestamp": "2026-02-10T12:00:00Z",
+  "algorithm": "sha-256"
+}
